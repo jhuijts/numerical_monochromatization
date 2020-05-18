@@ -1,9 +1,22 @@
+# Copyright 2019, Julius Huijts
+# Authors: Julius Huijts
+# License: BSD-3-Clause
+"""
+This file is part of the numerical monochromatization method for the 
+treatment of broadband diffraction patterns. It contains the functions 
+that generate matrix C
+"""
+
+
 import numpy as np
 import scipy.sparse as sparse
 
 
 def parloop(Npixels, a, S, k_x, mode):
-## To generate matrix C in a parallel fashion. The way matrix C is built up when generating a polychromatic diffraction pattern (mode='generation') differs from the way it is built up when analyzing (or monochromatizing) a diffraction pattern (mode='analysis') in the upperlimit on n_max.
+## To generate matrix C in a parallel fashion. The way matrix C is built up 
+## when generating a polychromatic diffraction pattern (mode='generation') 
+## differs from the way it is built up when analyzing (or monochromatizing) 
+## a diffraction pattern (mode='analysis') in the upperlimit on n_max.
     
     N = np.arange(1, Npixels+1)
     C_block = sparse.lil_matrix((Npixels, Npixels**2), dtype=np.float32)
