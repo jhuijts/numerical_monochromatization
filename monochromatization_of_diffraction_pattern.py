@@ -1,10 +1,19 @@
+# Copyright 2019, Julius Huijts
+# Authors: Julius Huijts
+# License: BSD-3-Clause
+"""
+This file is part of the numerical monochromatization method for the 
+treatment of broadband diffraction patterns. It contains the functions 
+needed for monochromatization procedure.
+"""
+
+
 import numpy as np
 import scipy.sparse as sparse
 from joblib import Parallel, delayed
 from Cparloop_sparse import parloop
 import scipy.ndimage as ndimage
 
-## Contains functions needed for monochromatization procedure
 
 def build_C_1D(Npixels, a, S, mode):
     N = np.arange(1, Npixels+1)
