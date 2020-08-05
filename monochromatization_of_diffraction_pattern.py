@@ -14,7 +14,16 @@ from joblib import Parallel, delayed
 from Cparloop_sparse import parloop
 import scipy.ndimage as ndimage
 
-
+def build_C(S, a, Npixels, n_jobs=-2, verbose=10, Cmode='analysis'):
+    ## Builds matrix C
+    ## Cmode = 'analysis' or 'generation'
+    #if __name__ == '__main__':
+    listofCblocks = Parallel(n_jobs=n_jobs, verbose=verbose)(delayed(parloop)(Npixels, a, S, k_x, Cmode) for k_x in range(1,Npixels+1))
+    
+    C_csr = sparse.vstack(listofCblocks,format='csr') # C in sparse csr format
+    C_full_csr = sparse.kron(np.eye(4),C_csr,format='csr')
+    
+    return C_full_csr
 
 def cut_rotate_ravel(B):
     ## Prepares blurred pattern B for the monochromatization by matrix C
@@ -35,18 +44,6 @@ def cut_rotate_ravel(B):
     return B_ravel
 
 
-def build_C(S, a, Npixels, n_jobs, verbose, Cmode='analysis'):
-    ## Builds matrix C
-    ## Cmode = 'analysis' or 'generation'
-    #if __name__ == '__main__':
-    listofCblocks = Parallel(n_jobs=n_jobs, verbose=verbose)(delayed(parloop)(Npixels, a, S, k_x, Cmode) for k_x in range(1,Npixels+1))
-    
-    C_csr = sparse.vstack(listofCblocks,format='csr') # C in sparse csr format
-    C_full_csr = sparse.kron(np.eye(4),C_csr,format='csr')
-    
-    return C_full_csr
-
-
 def inverse_ravel_rotate_cut(Ireg_2D_ravel):
     Npixels = int(np.sqrt(Ireg_2D_ravel.size)/2)
     
@@ -58,7 +55,7 @@ def inverse_ravel_rotate_cut(Ireg_2D_ravel):
     
     return Ireg_2D
 
-def CGLS_sparse(A,b,k_max,reorth,nonneg):
+def CGLS_sparse(A,b,k_max=30,reorth=True,nonneg=True):
     # As in the Matlab function by P.C. Hansen
     # X = RRGMRES(A,b,k_max)
     # but for a sparse A in csr format
@@ -117,7 +114,7 @@ def CGLS_sparse(A,b,k_max,reorth,nonneg):
     return X
 
 
-def CGLS_sparse_supcon(A,b,supfilter,k_max,reorth,nonneg):
+def CGLS_sparse_supcon(A,b,supfilter,k_max=30,reorth=True,nonneg=True):
     # As in the Matlab function by P.C. Hansen
     # X = RRGMRES(A,b,k_max)
     # but for a sparse A in csr format
@@ -223,7 +220,7 @@ def build_C_1D(Npixels, a, S, mode):
     return C
 
 
-def CGLS_sparse_supcon_1D(A,b,supfilter,k_max,reorth,nonneg):
+def CGLS_sparse_supcon_1D(A,b,supfilter,k_max=30,reorth=True,nonneg=True):
     ## For illustration. Assumes that pixel 0 is in the center, so supfilter.size should be 2*Npixels-1
     
     reorth = bool(reorth)
