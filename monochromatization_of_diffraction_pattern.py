@@ -44,16 +44,16 @@ def cut_rotate_ravel(B):
     return B_ravel
 
 
-def inverse_ravel_rotate_cut(Ireg_2D_ravel):
-    Npixels = int(np.sqrt(Ireg_2D_ravel.size)/2)
+def inverse_ravel_rotate_cut(mk_2D_ravel):
+    Npixels = int(np.sqrt(mk_2D_ravel.size)/2)
     
-    Ireg_2D = np.zeros((2*Npixels, 2*Npixels))
-    Ireg_2D[0:Npixels, 0:Npixels] = np.rot90(Ireg_2D_ravel[0:Npixels**2].reshape((Npixels,Npixels),order='F'), 2)
-    Ireg_2D[0:Npixels, Npixels:2*Npixels] = np.rot90(Ireg_2D_ravel[Npixels**2:2*Npixels**2].reshape((Npixels,Npixels),order='F'), 1)
-    Ireg_2D[Npixels:2*Npixels, Npixels:2*Npixels] = Ireg_2D_ravel[2*Npixels**2:3*Npixels**2].reshape((Npixels,Npixels),order='F')
-    Ireg_2D[Npixels:2*Npixels, 0:Npixels] = np.rot90(Ireg_2D_ravel[3*Npixels**2:4*Npixels**2].reshape((Npixels,Npixels),order='F'), -1)
+    mk_2D = np.zeros((2*Npixels, 2*Npixels))
+    mk_2D[0:Npixels, 0:Npixels] = np.rot90(mk_2D_ravel[0:Npixels**2].reshape((Npixels,Npixels),order='F'), 2)
+    mk_2D[0:Npixels, Npixels:2*Npixels] = np.rot90(mk_2D_ravel[Npixels**2:2*Npixels**2].reshape((Npixels,Npixels),order='F'), 1)
+    mk_2D[Npixels:2*Npixels, Npixels:2*Npixels] = mk_2D_ravel[2*Npixels**2:3*Npixels**2].reshape((Npixels,Npixels),order='F')
+    mk_2D[Npixels:2*Npixels, 0:Npixels] = np.rot90(mk_2D_ravel[3*Npixels**2:4*Npixels**2].reshape((Npixels,Npixels),order='F'), -1)
     
-    return Ireg_2D
+    return mk_2D
 
 def CGLS_sparse(A,b,k_max=30,reorth=True,nonneg=True):
     # As in the Matlab function by P.C. Hansen
