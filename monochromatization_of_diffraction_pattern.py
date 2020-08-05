@@ -15,64 +15,6 @@ from Cparloop_sparse import parloop
 import scipy.ndimage as ndimage
 
 
-def build_C_1D(Npixels, a, S, mode):
-    N = np.arange(1, Npixels+1)
-    C = sparse.lil_matrix((Npixels, Npixels), dtype=np.float32)
-    
-    if mode == 'generation':
-        
-        for k_x in range(1,Npixels+1):
-            n_x_min = (-1*(N > (k_x-1)/max(a))+1).sum()+1
-            n_x_max = ((N < (k_x/min(a)+1))*1).sum()
-            for n_x in range(n_x_min,n_x_max+1):
-                if (n_x != 1):
-                    a_l = a[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
-                    S_L = S[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
-                else:
-                    a_l = a[(a > (k_x-1)/n_x)]
-                    S_L = S[(a > (k_x-1)/n_x)]
-
-                f_k_xn_xl = (np.minimum(a_l*n_x,k_x*np.ones_like(a_l))-np.maximum(a_l*(n_x-1),(k_x-1)*np.ones_like(a_l)))/a_l
-                C[k_x-1, (n_x-1)] = np.dot(S_L, f_k_xn_xl).astype('float32')
-                
-    if mode == 'analysis':
-        
-        for k_x in range(1,Npixels+1):
-            n_x_min = (-1*(N > (k_x-1)/max(a))+1).sum()+1
-            n_x_max = np.minimum(((N < (k_x/min(a)+1))*1).sum(), Npixels)
-            for n_x in range(n_x_min,n_x_max+1):
-                if (n_x != 1):
-                    a_l = a[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
-                    S_L = S[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
-                else:
-                    a_l = a[(a > (k_x-1)/n_x)]
-                    S_L = S[(a > (k_x-1)/n_x)]
-
-                f_k_xn_xl = (np.minimum(a_l*n_x,k_x*np.ones_like(a_l))-np.maximum(a_l*(n_x-1),(k_x-1)*np.ones_like(a_l)))/a_l
-                C[k_x-1, (n_x-1)] = np.dot(S_L, f_k_xn_xl).astype('float32')
-    return C
-
-def shave_sides_mask(S, a, Npixels):
-    ## Creates a mask that shaves the sides of B_raw to force it to what C is expecting
-    pixelN = np.linspace(-Npixels,0,Npixels, endpoint=False)
-
-    if a[0]>a[-1]:
-        # a descending
-        cumS = np.cumsum(S)
-    else:
-        # a ascending
-        cumS = np.cumsum(S[::-1])
-    
-    cumS_x = np.linspace(-Npixels+0.5,-min(a)*Npixels,len(a))
-    Smask_left = np.interp(pixelN,cumS_x,cumS)
-    Smask = np.ones(2*Npixels)
-    Smask[:Npixels] = Smask_left
-    Smask[Npixels:] = Smask_left[::-1]
-    
-    Smask_2D = np.minimum(np.outer(np.ones(2*Npixels), Smask), np.outer(Smask, np.ones(2*Npixels)))
-    
-    return Smask_2D
-
 
 def cut_rotate_ravel(B):
     ## Prepares blurred pattern B for the monochromatization by matrix C
@@ -179,6 +121,7 @@ def CGLS_sparse_supcon(A,b,supfilter,k_max,reorth,nonneg):
     # As in the Matlab function by P.C. Hansen
     # X = RRGMRES(A,b,k_max)
     # but for a sparse A in csr format
+    # and taking into account a support constraint in real space
     
     reorth = bool(reorth)
     nonneg = bool(nonneg)
@@ -241,8 +184,47 @@ def CGLS_sparse_supcon(A,b,supfilter,k_max,reorth,nonneg):
         
     return X
 
+def build_C_1D(Npixels, a, S, mode):
+    ## For illustration
+    N = np.arange(1, Npixels+1)
+    C = sparse.lil_matrix((Npixels, Npixels), dtype=np.float32)
+    
+    if mode == 'generation':
+        
+        for k_x in range(1,Npixels+1):
+            n_x_min = (-1*(N > (k_x-1)/max(a))+1).sum()+1
+            n_x_max = ((N < (k_x/min(a)+1))*1).sum()
+            for n_x in range(n_x_min,n_x_max+1):
+                if (n_x != 1):
+                    a_l = a[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
+                    S_L = S[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
+                else:
+                    a_l = a[(a > (k_x-1)/n_x)]
+                    S_L = S[(a > (k_x-1)/n_x)]
+
+                f_k_xn_xl = (np.minimum(a_l*n_x,k_x*np.ones_like(a_l))-np.maximum(a_l*(n_x-1),(k_x-1)*np.ones_like(a_l)))/a_l
+                C[k_x-1, (n_x-1)] = np.dot(S_L, f_k_xn_xl).astype('float32')
+                
+    if mode == 'analysis':
+        
+        for k_x in range(1,Npixels+1):
+            n_x_min = (-1*(N > (k_x-1)/max(a))+1).sum()+1
+            n_x_max = np.minimum(((N < (k_x/min(a)+1))*1).sum(), Npixels)
+            for n_x in range(n_x_min,n_x_max+1):
+                if (n_x != 1):
+                    a_l = a[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
+                    S_L = S[(a > (k_x-1)/n_x) & (a < k_x/(n_x-1))]
+                else:
+                    a_l = a[(a > (k_x-1)/n_x)]
+                    S_L = S[(a > (k_x-1)/n_x)]
+
+                f_k_xn_xl = (np.minimum(a_l*n_x,k_x*np.ones_like(a_l))-np.maximum(a_l*(n_x-1),(k_x-1)*np.ones_like(a_l)))/a_l
+                C[k_x-1, (n_x-1)] = np.dot(S_L, f_k_xn_xl).astype('float32')
+    return C
+
+
 def CGLS_sparse_supcon_1D(A,b,supfilter,k_max,reorth,nonneg):
-    ## for illustration. Assumes that pixel 0 is in the center, so supfilter.size should be 2*Npixels-1
+    ## For illustration. Assumes that pixel 0 is in the center, so supfilter.size should be 2*Npixels-1
     
     reorth = bool(reorth)
     nonneg = bool(nonneg)
