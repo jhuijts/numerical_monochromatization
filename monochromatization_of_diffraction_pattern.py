@@ -114,73 +114,6 @@ def CGLS_sparse(A,b,k_max=30,reorth=True,nonneg=True):
     return X
 
 
-def CGLS_sparse_supcon(A,b,supfilter,k_max=30,reorth=True,nonneg=True):
-    # As in the Matlab function by P.C. Hansen
-    # X = RRGMRES(A,b,k_max)
-    # but for a sparse A in csr format
-    # and taking into account a support constraint in real space
-    
-    reorth = bool(reorth)
-    nonneg = bool(nonneg)
-    
-    if sparse.isspmatrix_csr(A)==False:
-        A = A.tocsr()
-    
-    A_shape0 = A.shape[0]
-    A_shape1 = A.shape[1]
-
-    # Allocate space
-    X = np.zeros((A_shape1,k_max)) # Matrix of solutions.
-    if reorth:
-        ATr = np.zeros((A_shape1,k_max+1))
-    x = np.zeros(A_shape1)
-    d = A.transpose()*b
-    r = b.copy()
-    normr2 = np.inner(d,d)
-    if reorth:
-        ATr[:,0] = d/np.linalg.norm(d)
-    
-    # Iterate
-    for j in range(k_max):
-        
-        # Update x and r vectors
-        Ad = A*d
-        alpha = normr2/np.inner(Ad,Ad)
-        x_new = x + alpha*d
-        if nonneg:
-            x_new_nonneg = abs(x_new*(x_new>0))
-            x[:] = x_new_nonneg[:]
-        else:
-            x[:] = x_new[:]
-        x_2d = inverse_ravel_rotate_cut(x)
-        x_2d_FT = np.fft.fft2(x_2d)
-        x_2d_FT_filtered = x_2d_FT*supfilter
-        x_2d_filtered = abs(np.fft.ifft2(x_2d_FT_filtered))
-        x_filtered = cut_rotate_ravel(x_2d_filtered)
-        x = x_filtered.copy()
-        
-        r_new = r - alpha*Ad
-        r[:] = r_new[:]
-        s = A.transpose()*r
-        
-        # Reorthogonalize s to previous s vectors
-        if reorth:
-            for i in range(j):
-                s_new = s - np.inner(ATr[:,i],s)*ATr[:,i]
-                s[:] = s_new[:]
-            ATr[:,j+1] = s/np.linalg.norm(s)
-            
-        # Update d vector
-        normr2_new = np.inner(s,s)
-        beta = normr2_new/normr2
-        normr2 = normr2_new.copy()
-        d_new = s + beta*d
-        d[:] = d_new[:]
-        
-        X[:,j] = x
-        
-    return X
-
 def build_C_1D(Npixels, a, S, mode):
     ## For illustration
     N = np.arange(1, Npixels+1)
@@ -220,8 +153,8 @@ def build_C_1D(Npixels, a, S, mode):
     return C
 
 
-def CGLS_sparse_supcon_1D(A,b,supfilter,k_max=30,reorth=True,nonneg=True):
-    ## For illustration. Assumes that pixel 0 is in the center, so supfilter.size should be 2*Npixels-1
+def CGLS_sparse_1D(A,b,k_max=30,reorth=True,nonneg=True):
+    ## For illustration. Assumes that pixel 0 is in the center.
     
     reorth = bool(reorth)
     nonneg = bool(nonneg)
@@ -255,13 +188,6 @@ def CGLS_sparse_supcon_1D(A,b,supfilter,k_max=30,reorth=True,nonneg=True):
             x[:] = x_new_nonneg[:]
         else:
             x[:] = x_new[:]
-            
-        x_full = np.hstack((x[:0:-1],x))
-        x_full_FT = np.fft.fftshift(np.fft.fft(x_full))
-        x_full_FT_filtered = x_full_FT*supfilter
-        x_full_filtered = abs(np.fft.ifft(np.fft.ifftshift(x_full_FT_filtered)))
-        x_filtered = x_full_filtered[(x.size-1):]
-        x = x_filtered.copy()
         
         r_new = r - alpha*Ad
         r[:] = r_new[:]
